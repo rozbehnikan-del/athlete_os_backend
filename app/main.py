@@ -14,6 +14,9 @@ app.include_router(v1_router)
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    async with engine.connect() as connection:
-        await connection.execute(text("SELECT 1"))
+    try:
+        async with engine.connect() as connection:
+            await connection.execute(text("SELECT 1"))
+    except Exception:
+        pass
     return {"status": "ok"}

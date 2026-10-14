@@ -5,7 +5,7 @@ from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from app.models.user import CoachProfile, User
+from app.models.user import User
 from app.models.workout import Workout, WorkoutExercise, WorkoutSet
 from app.models.workout_result import SetResult, WorkoutResult
 
@@ -16,7 +16,7 @@ class WorkoutRepository:
 
     def _detail_options(self) -> tuple:
         return (
-            joinedload(Workout.coach).joinedload(CoachProfile.user),
+            joinedload(Workout.coach),
             selectinload(Workout.workout_exercises).joinedload(WorkoutExercise.exercise),
             selectinload(Workout.workout_exercises).selectinload(WorkoutExercise.workout_sets),
         )
@@ -27,7 +27,7 @@ class WorkoutRepository:
             .where(
                 Workout.athlete_id == athlete_id,
                 Workout.scheduled_for == today,
-                Workout.status.in_(("scheduled", "active")),
+                Workout.status.in_(("planned", "active")),
             )
             .options(*self._detail_options())
             .order_by(Workout.created_at.desc().nullslast(), Workout.id)
@@ -68,7 +68,7 @@ class WorkoutRepository:
         return int(await self.session.scalar(stmt) or 0)
 
     async def get_history(self, athlete_id: UUID, page: int, per_page: int) -> list[tuple]:
-        completed_sets = func.count(SetResult.id).label("completed_sets")
+        completed_sets = func.count(SetResult.id).filter(SetResult.completed.is_(True)).label("completed_sets")
         total_sets = (
             select(func.count(WorkoutSet.id))
             .join(WorkoutExercise, WorkoutExercise.id == WorkoutSet.workout_exercise_id)

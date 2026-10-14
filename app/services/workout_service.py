@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 from sqlalchemy.exc import IntegrityError
 
 from app.api.errors import ApiError
-from app.models.user import CoachProfile
+from app.models.user import User
 from app.models.workout import Workout, WorkoutSet
 from app.models.workout_result import SetResult, WorkoutResult
 from app.repositories.workout_repository import WorkoutRepository
@@ -73,30 +73,39 @@ class WorkoutService:
             notes=payload.notes,
         )
         try:
-            async with self.repository.session.begin_nested():
-                await self.repository.add_workout_result(result)
-                set_results = [
-                    SetResult(
-                        id=uuid4(),
-                        workout_result_id=result.id,
-                        workout_exercise_id=workout_set.workout_exercise_id,
-                        workout_set_id=incoming_set.set_id,
-                        actual_reps=incoming_set.actual_reps,
-                        actual_weight=Decimal(str(incoming_set.actual_weight)),
-                        weight_unit=incoming_set.weight_unit,
-                        rpe=Decimal(str(incoming_set.rpe)) if incoming_set.rpe is not None else None,
-                        completed=incoming_set.completed,
-                        athlete_notes=incoming_set.notes,
-                    )
-                    for incoming_set, workout_set in zip(payload.sets, resolved_sets, strict=True)
-                ]
-                await self.repository.add_set_results(set_results)
+            await self.repository.add_workout_result(result)
+            set_results = [
+                SetResult(
+                    id=uuid4(),
+                    workout_result_id=result.id,
+                    workout_exercise_id=workout_set.workout_exercise_id,
+                    workout_set_id=incoming_set.set_id,
+                    actual_reps=incoming_set.actual_reps,
+                    actual_weight=Decimal(str(incoming_set.actual_weight)),
+                    weight_unit=incoming_set.weight_unit,
+                    rpe=Decimal(str(incoming_set.rpe)) if incoming_set.rpe is not None else None,
+                    completed=incoming_set.completed,
+                    athlete_notes=incoming_set.notes,
+                )
+                for incoming_set, workout_set in zip(payload.sets, resolved_sets, strict=True)
+            ]
+            await self.repository.add_set_results(set_results)
             await self.repository.session.commit()
         except IntegrityError as exc:
             await self.repository.session.rollback()
             raise ApiError(409, "WORKOUT_ALREADY_COMPLETED", "Workout has already been completed.") from exc
+        except Exception:
+            await self.repository.session.rollback()
+            raise
 
-        return WorkoutResultResponse(id=result.id, workout_id=result.workout_id, completed_at=result.completed_at)
+        return WorkoutResultResponse(
+            id=result.id,
+            workout_id=result.workout_id,
+            status="completed",
+            completed_at=result.completed_at,
+            completed_sets=sum(1 for item in payload.sets if item.completed),
+            notes=result.notes,
+        )
 
     async def get_history(self, athlete_id: UUID, page: int, per_page: int) -> WorkoutHistoryResponse:
         total = await self.repository.history_total(athlete_id)
@@ -119,10 +128,10 @@ class WorkoutService:
             meta={"page": page, "per_page": per_page, "total": total},
         )
 
-    def _coach_summary(self, coach: CoachProfile | None) -> CoachSummary | None:
+    def _coach_summary(self, coach: User | None) -> CoachSummary | None:
         if not coach:
             return None
-        return CoachSummary(id=coach.id, name=coach.user.full_name if coach.user else None)
+        return CoachSummary(id=coach.id, name=coach.full_name)
 
     def _to_workout_detail(self, workout: Workout) -> WorkoutDetailResponse:
         return WorkoutDetailResponse(

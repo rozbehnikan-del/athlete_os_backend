@@ -30,7 +30,10 @@ class WorkoutResultCreate(BaseModel):
 class WorkoutResultResponse(BaseModel):
     id: UUID
     workout_id: UUID
+    status: str
     completed_at: datetime
+    completed_sets: int
+    notes: str | None
 
 
 class WorkoutResultDataResponse(BaseModel):

@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     environment: str = Field(default="local", alias="ENVIRONMENT")
 
+    def model_post_init(self, __context: object) -> None:
+        if self.environment not in {"local", "test"} and self.jwt_secret_key == "change-me":
+            raise ValueError("JWT_SECRET_KEY must be changed outside local/test environments.")
+
     @property
     def database_url(self) -> str:
         return (
