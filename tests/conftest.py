@@ -19,7 +19,8 @@ FOREIGN_SET_ID = UUID("dddddddd-dddd-4ddd-8ddd-dddddddddddd")
 
 
 class FakeSession:
-    def __init__(self) -> None:
+    def __init__(self, repository: "FakeRepository") -> None:
+        self.repository = repository
         self.commits = 0
         self.rollbacks = 0
 
@@ -28,11 +29,12 @@ class FakeSession:
 
     async def rollback(self) -> None:
         self.rollbacks += 1
+        self.repository.rollback_pending_changes()
 
 
 class FakeRepository:
     def __init__(self, fail_set_insert: bool = False) -> None:
-        self.session = FakeSession()
+        self.session = FakeSession(self)
         self.fail_set_insert = fail_set_insert
         self.results = []
         self.set_results = []
@@ -54,6 +56,12 @@ class FakeRepository:
             workout_exercises=self.exercises,
         )
         self.foreign_workout = SimpleNamespace(**{**self.workout.__dict__, "id": FOREIGN_WORKOUT_ID, "athlete_id": OTHER_ATHLETE_ID})
+        self._initial_workout_status = self.workout.status
+
+    def rollback_pending_changes(self) -> None:
+        self.results.clear()
+        self.set_results.clear()
+        self.workout.status = self._initial_workout_status
 
     def _workout_exercise(self, name: str, slug: str, order: int, set_count: int) -> SimpleNamespace:
         exercise_id = uuid4()
@@ -111,9 +119,12 @@ class FakeRepository:
 
     async def add_set_results(self, results):
         if self.fail_set_insert:
-            self.results.clear()
             raise RuntimeError("insert failed")
         self.set_results.extend(results)
+
+    async def mark_workout_completed(self, workout_id):
+        if workout_id == self.workout.id:
+            self.workout.status = "completed"
 
     async def history_total(self, athlete_id):
         return 1 if self.results else 0
@@ -136,6 +147,37 @@ class FakeRepository:
             )
         ]
 
+    async def get_history_sets(self, workout_result_ids):
+        rows = []
+        for set_result in self.set_results:
+            if set_result.workout_result_id not in workout_result_ids:
+                continue
+            workout_exercise = next(
+                exercise for exercise in self.exercises if exercise.id == set_result.workout_exercise_id
+            )
+            workout_set = next(
+                workout_set
+                for workout_set in workout_exercise.workout_sets
+                if workout_set.id == set_result.workout_set_id
+            )
+            rows.append(
+                SimpleNamespace(
+                    workout_result_id=set_result.workout_result_id,
+                    prescription_id=set_result.workout_exercise_id,
+                    exercise_id=workout_exercise.exercise.id,
+                    set_id=set_result.workout_set_id,
+                    set_number=workout_set.set_number,
+                    actual_reps=set_result.actual_reps,
+                    actual_weight=set_result.actual_weight,
+                    weight_unit=set_result.weight_unit,
+                    rpe=set_result.rpe,
+                    completed=set_result.completed,
+                    notes=set_result.athlete_notes,
+                    exercise_order=workout_exercise.exercise_order,
+                )
+            )
+        return sorted(rows, key=lambda row: (row.exercise_order, row.set_number))
+
 
 @pytest.fixture()
 def fake_repository():
@@ -154,6 +196,10 @@ def client(fake_repository):
 
 @pytest.fixture()
 def valid_result_payload(fake_repository):
+    return build_result_payload(fake_repository)
+
+
+def build_result_payload(fake_repository):
     sets = [
         {
             "set_id": str(workout_set.id),

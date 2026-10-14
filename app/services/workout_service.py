@@ -9,7 +9,7 @@ from app.models.user import User
 from app.models.workout import Workout, WorkoutSet
 from app.models.workout_result import SetResult, WorkoutResult
 from app.repositories.workout_repository import WorkoutRepository
-from app.schemas.history import WorkoutHistoryItem, WorkoutHistoryResponse
+from app.schemas.history import WorkoutHistoryItem, WorkoutHistoryResponse, WorkoutHistorySet
 from app.schemas.workout import (
     CoachSummary,
     ExerciseSummary,
@@ -90,6 +90,7 @@ class WorkoutService:
                 for incoming_set, workout_set in zip(payload.sets, resolved_sets, strict=True)
             ]
             await self.repository.add_set_results(set_results)
+            await self.repository.mark_workout_completed(workout_id)
             await self.repository.session.commit()
         except IntegrityError as exc:
             await self.repository.session.rollback()
@@ -110,6 +111,23 @@ class WorkoutService:
     async def get_history(self, athlete_id: UUID, page: int, per_page: int) -> WorkoutHistoryResponse:
         total = await self.repository.history_total(athlete_id)
         rows = await self.repository.get_history(athlete_id, page, per_page)
+        history_set_rows = await self.repository.get_history_sets([row.id for row in rows])
+        sets_by_result_id = {row.id: [] for row in rows}
+        for set_row in history_set_rows:
+            sets_by_result_id.setdefault(set_row.workout_result_id, []).append(
+                WorkoutHistorySet(
+                    prescription_id=set_row.prescription_id,
+                    exercise_id=set_row.exercise_id,
+                    set_id=set_row.set_id,
+                    set_number=set_row.set_number,
+                    actual_reps=set_row.actual_reps,
+                    actual_weight=float(set_row.actual_weight),
+                    weight_unit=set_row.weight_unit,
+                    rpe=float(set_row.rpe) if set_row.rpe is not None else None,
+                    completed=set_row.completed,
+                    notes=set_row.notes,
+                )
+            )
         return WorkoutHistoryResponse(
             data=[
                 WorkoutHistoryItem(
@@ -122,6 +140,7 @@ class WorkoutService:
                     completed_sets=row.completed_sets,
                     total_sets=row.total_sets,
                     notes=row.notes,
+                    sets=sets_by_result_id.get(row.id, []),
                 )
                 for row in rows
             ],

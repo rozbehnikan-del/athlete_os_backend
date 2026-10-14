@@ -1,7 +1,7 @@
 from datetime import date
 from uuid import UUID
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -63,6 +63,11 @@ class WorkoutRepository:
         self.session.add_all(results)
         await self.session.flush()
 
+    async def mark_workout_completed(self, workout_id: UUID) -> None:
+        await self.session.execute(
+            update(Workout).where(Workout.id == workout_id).values(status="completed")
+        )
+
     async def history_total(self, athlete_id: UUID) -> int:
         stmt = select(func.count()).select_from(WorkoutResult).where(WorkoutResult.athlete_id == athlete_id)
         return int(await self.session.scalar(stmt) or 0)
@@ -101,8 +106,33 @@ class WorkoutRepository:
                 WorkoutResult.notes,
                 Workout.id,
             )
-            .order_by(WorkoutResult.completed_at.desc())
+            .order_by(WorkoutResult.completed_at.desc(), WorkoutResult.id)
             .offset((page - 1) * per_page)
             .limit(per_page)
+        )
+        return list((await self.session.execute(stmt)).all())
+
+    async def get_history_sets(self, workout_result_ids: list[UUID]) -> list[tuple]:
+        if not workout_result_ids:
+            return []
+        stmt = (
+            select(
+                SetResult.workout_result_id,
+                SetResult.workout_exercise_id.label("prescription_id"),
+                WorkoutExercise.exercise_id,
+                SetResult.workout_set_id.label("set_id"),
+                WorkoutSet.set_number,
+                SetResult.actual_reps,
+                SetResult.actual_weight,
+                SetResult.weight_unit,
+                SetResult.rpe,
+                SetResult.completed,
+                SetResult.athlete_notes.label("notes"),
+                WorkoutExercise.exercise_order,
+            )
+            .join(WorkoutExercise, WorkoutExercise.id == SetResult.workout_exercise_id)
+            .join(WorkoutSet, WorkoutSet.id == SetResult.workout_set_id)
+            .where(SetResult.workout_result_id.in_(workout_result_ids))
+            .order_by(SetResult.workout_result_id, WorkoutExercise.exercise_order, WorkoutSet.set_number)
         )
         return list((await self.session.execute(stmt)).all())
