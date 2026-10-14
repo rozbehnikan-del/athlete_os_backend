@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID as PyUUID
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,7 +17,11 @@ class WorkoutResult(Base):
     athlete_id: Mapped[PyUUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     notes: Mapped[str | None] = mapped_column("athlete_notes", Text, nullable=True)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("NOW()"),
+    )
 
     workout = relationship("Workout")
     set_results = relationship("SetResult", back_populates="workout_result")
@@ -44,6 +48,10 @@ class SetResult(Base):
     rpe: Mapped[Decimal | None] = mapped_column(Numeric(3, 1), nullable=True)
     completed: Mapped[bool] = mapped_column(Boolean, nullable=False)
     athlete_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("NOW()"),
+    )
 
     workout_result = relationship("WorkoutResult", back_populates="set_results")

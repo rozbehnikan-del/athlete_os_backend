@@ -3,6 +3,7 @@ from uuid import UUID
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy import URL
 
 
 class Settings(BaseSettings):
@@ -27,10 +28,14 @@ class Settings(BaseSettings):
             raise ValueError("JWT_SECRET_KEY must be changed outside local/test environments.")
 
     @property
-    def database_url(self) -> str:
-        return (
-            f"postgresql+psycopg://{self.database_user}:{self.database_password}"
-            f"@{self.database_host}:{self.database_port}/{self.database_name}"
+    def database_url(self) -> URL:
+        return URL.create(
+            "postgresql+psycopg",
+            username=self.database_user or None,
+            password=self.database_password or None,
+            host=self.database_host or None,
+            port=self.database_port,
+            database=self.database_name,
         )
 
 

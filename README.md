@@ -23,10 +23,49 @@ uvicorn app.main:app --reload
 API paths:
 
 - `GET /health`
+- `GET /ready`
 - `GET /v1/athletes/me/workouts/today`
 - `GET /v1/workouts/{workout_id}`
 - `POST /v1/workouts/{workout_id}/results`
 - `GET /v1/athletes/me/workout-history`
+
+## First Real Database Verification
+
+1. Prepare the local environment:
+
+```powershell
+.\scripts\setup_local.ps1
+```
+
+2. Edit `.env` locally and enter the real PostgreSQL connection details:
+
+```dotenv
+DATABASE_HOST=
+DATABASE_USER=
+DATABASE_PASSWORD=
+```
+
+Never commit `.env`.
+
+3. Run the read-only database smoke test:
+
+```powershell
+.\scripts\verify_real_db.ps1
+```
+
+4. Start the backend:
+
+```powershell
+.\scripts\run_local.ps1
+```
+
+5. In another terminal, verify read endpoints:
+
+```powershell
+.\scripts\verify_api.ps1
+```
+
+This verification is read-only. Do not submit workout results against the real `athlete_os` database during the first connectivity pass.
 
 ## Tests
 
@@ -65,5 +104,6 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 ```bash
 curl http://localhost:8000/health
+curl http://localhost:8000/ready
 curl http://localhost:8000/v1/athletes/me/workouts/today
 ```
