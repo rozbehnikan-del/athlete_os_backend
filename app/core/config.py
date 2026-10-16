@@ -21,10 +21,15 @@ class Settings(BaseSettings):
     )
     jwt_secret_key: str = Field(default="change-me", alias="JWT_SECRET_KEY")
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
+    jwt_access_token_expire_minutes: int = Field(default=60, alias="JWT_ACCESS_TOKEN_EXPIRE_MINUTES")
     environment: str = Field(default="local", alias="ENVIRONMENT")
     cors_origins: str = Field(default="", alias="CORS_ORIGINS")
+    demo_athlete_password: str = Field(default="", alias="DEMO_ATHLETE_PASSWORD")
+    demo_coach_password: str = Field(default="", alias="DEMO_COACH_PASSWORD")
 
     def model_post_init(self, __context: object) -> None:
+        if self.environment != "test" and not self.jwt_secret_key:
+            raise ValueError("JWT_SECRET_KEY must be set outside test environments.")
         if self.environment not in {"local", "test"} and self.jwt_secret_key == "change-me":
             raise ValueError("JWT_SECRET_KEY must be changed outside local/test environments.")
 

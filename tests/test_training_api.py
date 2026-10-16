@@ -1,4 +1,5 @@
 import sys
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -6,6 +7,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from tests.conftest import (
+    ATHLETE_ID,
+    COACH_ID,
     FOREIGN_SET_ID,
     FOREIGN_WORKOUT_ID,
     UNKNOWN_WORKOUT_ID,
@@ -13,8 +16,10 @@ from tests.conftest import (
     FakeRepository,
     build_result_payload,
 )
+from app.api.deps import get_current_athlete, get_user_repository
 from app.api.v1.workouts import get_workout_service
 from app.core.config import get_settings
+from app.core.security import create_access_token
 from app.main import app
 from app.main import add_cors_middleware
 from app.services.workout_service import WorkoutService
@@ -61,6 +66,71 @@ def test_foreign_origin_is_not_allowed_in_production_style_config(monkeypatch):
 
     assert response.status_code == 400
     assert "access-control-allow-origin" not in response.headers
+
+
+class RoleUserRepository:
+    def __init__(self) -> None:
+        self.users = {
+            ATHLETE_ID: type(
+                "User",
+                (),
+                {
+                    "id": ATHLETE_ID,
+                    "email": "ali@athleteos.local",
+                    "phone": None,
+                    "full_name": "Ali",
+                    "role": "athlete",
+                    "is_active": True,
+                },
+            )(),
+            COACH_ID: type(
+                "User",
+                (),
+                {
+                    "id": COACH_ID,
+                    "email": "coach@athleteos.local",
+                    "phone": None,
+                    "full_name": "Coach",
+                    "role": "coach",
+                    "is_active": True,
+                },
+            )(),
+        }
+
+    async def get_by_id(self, user_id):
+        return self.users.get(user_id)
+
+
+def test_athlete_jwt_can_access_training_endpoint(fake_repository):
+    app.dependency_overrides[get_workout_service] = lambda: WorkoutService(fake_repository)
+    app.dependency_overrides[get_user_repository] = lambda: RoleUserRepository()
+    token, _ = create_access_token(ATHLETE_ID, "athlete")
+    try:
+        with TestClient(app) as test_client:
+            response = test_client.get(
+                "/v1/athletes/me/workouts/today",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+
+
+def test_coach_jwt_receives_403_from_athlete_training_endpoint(fake_repository):
+    app.dependency_overrides[get_workout_service] = lambda: WorkoutService(fake_repository)
+    app.dependency_overrides[get_user_repository] = lambda: RoleUserRepository()
+    token, _ = create_access_token(COACH_ID, "coach")
+    try:
+        with TestClient(app) as test_client:
+            response = test_client.get(
+                "/v1/athletes/me/workouts/today",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 403
 
 
 def test_today_workout_returns_expected_workout(client):
@@ -236,6 +306,14 @@ def test_failed_submission_leaves_no_partial_writes(valid_result_payload):
     repository = FakeRepository(fail_set_insert=True)
     payload = build_result_payload(repository)
     app.dependency_overrides[get_workout_service] = lambda: WorkoutService(repository)
+    app.dependency_overrides[get_current_athlete] = lambda: SimpleNamespace(
+        id=ATHLETE_ID,
+        email="ali@athleteos.local",
+        phone=None,
+        full_name="Ali",
+        role="athlete",
+        is_active=True,
+    )
     try:
         with TestClient(app, raise_server_exceptions=False) as test_client:
             response = test_client.post(f"/v1/workouts/{WORKOUT_ID}/results", json=payload)

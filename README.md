@@ -91,9 +91,45 @@ pytest
 
 The included tests use dependency overrides/fakes and do not run destructive operations against the live `athlete_os` database.
 
+## Local Auth Setup
+
+Add local-only auth values to `.env`:
+
+```dotenv
+JWT_SECRET_KEY=<strong-local-secret>
+DEMO_ATHLETE_PASSWORD=<local-dev-password>
+DEMO_COACH_PASSWORD=<local-dev-password>
+```
+
+Run migrations:
+
+```bash
+alembic upgrade head
+```
+
+Set the seeded demo user passwords:
+
+```powershell
+.\scripts\set_demo_passwords.ps1
+```
+
+Login with email/password:
+
+```bash
+POST /v1/auth/login
+```
+
+Use the returned access token on protected endpoints:
+
+```http
+Authorization: Bearer <token>
+```
+
+Plain passwords are never stored; the setup script hashes local demo passwords before writing them.
+
 ## Database Notes
 
-The app maps the existing PostgreSQL schema. It does not create tables on startup. The temporary auth dependency resolves the current athlete from `DEMO_ATHLETE_ID`; clients never send `athlete_id` for `me` routes.
+The app maps the existing PostgreSQL schema. It does not create tables on startup. Protected API routes require a bearer access token; clients never send `athlete_id` for `me` routes.
 
 ## Alembic
 

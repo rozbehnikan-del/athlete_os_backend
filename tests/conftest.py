@@ -1,3 +1,4 @@
+import os
 from datetime import UTC, date, datetime
 from types import SimpleNamespace
 from uuid import UUID, uuid4
@@ -5,6 +6,10 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi.testclient import TestClient
 
+os.environ.setdefault("ENVIRONMENT", "test")
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
+
+from app.api.deps import get_current_athlete
 from app.api.v1.workouts import get_workout_service
 from app.main import app
 
@@ -189,6 +194,14 @@ def client(fake_repository):
     from app.services.workout_service import WorkoutService
 
     app.dependency_overrides[get_workout_service] = lambda: WorkoutService(fake_repository)
+    app.dependency_overrides[get_current_athlete] = lambda: SimpleNamespace(
+        id=ATHLETE_ID,
+        email="ali@athleteos.local",
+        phone=None,
+        full_name="Ali",
+        role="athlete",
+        is_active=True,
+    )
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()

@@ -16,7 +16,9 @@ target_metadata = Base.metadata
 
 
 def get_url() -> str:
-    return get_settings().database_url.set(drivername="postgresql").render_as_string(hide_password=False)
+    return get_settings().database_url.set(drivername="postgresql+psycopg").render_as_string(
+        hide_password=False,
+    )
 
 
 def run_migrations_offline() -> None:
