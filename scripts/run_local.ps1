@@ -19,4 +19,4 @@ if (-not (Test-Path $EnvPath)) {
 if (-not (Get-Command uvicorn -ErrorAction SilentlyContinue)) {
     Write-Error "uvicorn was not found in the virtual environment. Run .\scripts\setup_local.ps1 first."
 }
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+& (Join-Path $VenvPath "Scripts\python.exe") (Join-Path $PSScriptRoot "run_server.py")

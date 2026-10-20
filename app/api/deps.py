@@ -39,3 +39,9 @@ async def get_current_athlete(current_user: User = Depends(get_current_user)) ->
     if current_user.role != UserRole.ATHLETE:
         raise ApiError(403, "FORBIDDEN", "Athlete role required.")
     return current_user
+
+
+async def get_current_coach(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != UserRole.COACH:
+        raise ApiError(403, "FORBIDDEN", "Coach role required.")
+    return current_user

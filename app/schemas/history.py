@@ -1,8 +1,9 @@
-from datetime import datetime
+﻿from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 
+from app.core.completion_grade import completion_grade
 from app.schemas.common import PaginationMeta
 
 
@@ -30,6 +31,16 @@ class WorkoutHistoryItem(BaseModel):
     total_sets: int
     notes: str | None
     sets: list[WorkoutHistorySet]
+
+    @computed_field
+    @property
+    def completion_percentage(self) -> float | None:
+        return completion_grade(self.completed_sets, self.total_sets)[0]
+
+    @computed_field
+    @property
+    def completion_grade(self) -> str | None:
+        return completion_grade(self.completed_sets, self.total_sets)[1]
 
 
 class WorkoutHistoryResponse(BaseModel):

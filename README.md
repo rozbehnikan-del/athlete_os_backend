@@ -17,13 +17,17 @@ Copy `.env.example` to `.env` and fill in database credentials. Do not commit `.
 ## Run Locally
 
 ```bash
-uvicorn app.main:app --reload
+python scripts/run_server.py
 ```
 
 API paths:
 
 - `GET /health`
 - `GET /ready`
+- `GET /v1/coaches/me/athletes`
+- `GET /v1/coaches/me/athletes/{athlete_id}`
+- `POST /v1/coaches/me/athletes/{athlete_id}/workouts`
+- `GET /v1/exercises` (authenticated shared library)
 - `GET /v1/athletes/me/workouts/today`
 - `GET /v1/workouts/{workout_id}`
 - `POST /v1/workouts/{workout_id}/results`
@@ -180,4 +184,29 @@ curl -X POST http://localhost:8000/v1/workouts/<workout_id>/results \
       }
     ]
   }'
+```
+
+## Coach assignment MVP
+
+Coach routes require a coach JWT and an active, non-ended coach_athletes relationship.
+Unassigned athletes return 404. Creation commits workout, exercises and sets together,
+or rolls them all back. Existing database constraints require explicit target_reps,
+target_weight and kg/lb weight_unit for every prescribed set; no unit is invented.
+
+History now includes derived completion_percentage and completion_grade. No migration
+is needed. Grade measures completed sets / prescribed sets, not athletic ability.
+
+On Windows use the run_server.py launcher above (or scripts/run_local.ps1) so the
+selector event loop is chosen before Uvicorn starts; psycopg async rejects Proactor.
+The launcher binds localhost and accepts --port (default 8000).
+
+For the opt-in Flutter live UI test, run this server on port 8011, then execute
+scripts/verify_live_mvp.ps1 in the sibling Flutter repository. This test writes only
+clearly named workouts/results for the known local demo Ali account. It uses local
+demo passwords from .env via a deleted temporary file; never put them in source.
+
+Read-only persistence verification for a workout ID printed by that test:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/verify_mvp_persistence.py <workout-id>
 ```
