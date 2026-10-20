@@ -23,7 +23,7 @@ class Repository:
         self.session = SimpleNamespace(commit=AsyncMock(), rollback=AsyncMock())
         self.created = []
         self.fail = False
-    async def athletes(self, coach_id, athlete_id=None):
+    async def athletes(self, coach_id, athlete_id=None, *, for_update=False):
         if coach_id != COACH_ID or athlete_id not in (None, ATHLETE_ID): return []
         return [(SimpleNamespace(id=ATHLETE_ID, full_name='Ali', email='ali@athleteos.local',
             phone=None, is_active=True, password_hash='never expose'), None)]

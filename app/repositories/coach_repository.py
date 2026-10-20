@@ -9,7 +9,7 @@ class CoachRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def athletes(self, coach_id: UUID, athlete_id: UUID | None = None):
+    async def athletes(self, coach_id: UUID, athlete_id: UUID | None = None, *, for_update: bool = False):
         stmt = (select(User, AthleteProfile)
                 .join(CoachAthlete, CoachAthlete.athlete_id == User.id)
                 .outerjoin(AthleteProfile, AthleteProfile.user_id == User.id)
@@ -18,7 +18,9 @@ class CoachRepository:
                        User.role == 'athlete')
                 .order_by(User.full_name, User.id))
         if athlete_id is not None:
-            stmt = stmt.where(User.id == athlete_id).with_for_update(of=CoachAthlete)
+            stmt = stmt.where(User.id == athlete_id)
+        if for_update:
+            stmt = stmt.with_for_update(of=CoachAthlete)
         return list((await self.session.execute(stmt)).all())
 
     async def exercises(self):

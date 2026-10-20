@@ -1,0 +1,1023 @@
+{
+  "athlete_profiles": {
+    "checks": [],
+    "columns": [
+      {
+        "default": null,
+        "name": "user_id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": null,
+        "name": "date_of_birth",
+        "nullable": true,
+        "timezone": false,
+        "type": "DATE"
+      },
+      {
+        "default": null,
+        "name": "gender",
+        "nullable": true,
+        "timezone": false,
+        "type": "VARCHAR(20)"
+      },
+      {
+        "default": null,
+        "name": "height_cm",
+        "nullable": true,
+        "timezone": false,
+        "type": "NUMERIC(6, 2)"
+      },
+      {
+        "default": null,
+        "name": "weight_kg",
+        "nullable": true,
+        "timezone": false,
+        "type": "NUMERIC(6, 2)"
+      },
+      {
+        "default": null,
+        "name": "experience_level",
+        "nullable": true,
+        "timezone": false,
+        "type": "VARCHAR(30)"
+      },
+      {
+        "default": null,
+        "name": "goals",
+        "nullable": true,
+        "timezone": false,
+        "type": "TEXT"
+      },
+      {
+        "default": "now()",
+        "name": "created_at",
+        "nullable": false,
+        "timezone": true,
+        "type": "TIMESTAMP"
+      },
+      {
+        "default": "now()",
+        "name": "updated_at",
+        "nullable": false,
+        "timezone": true,
+        "type": "TIMESTAMP"
+      }
+    ],
+    "foreign_keys": [
+      {
+        "constrained_columns": [
+          "user_id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "referred_columns": [
+          "id"
+        ],
+        "referred_table": "users"
+      }
+    ],
+    "indexes": [],
+    "unique_columns": []
+  },
+  "coach_athletes": {
+    "checks": [
+      "coach_id <> athlete_id",
+      "status::text = ANY (ARRAY['active'::character varying, 'paused'::character varying, 'ended'::character varying]::text[])"
+    ],
+    "columns": [
+      {
+        "default": "gen_random_uuid()",
+        "name": "id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": null,
+        "name": "coach_id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": null,
+        "name": "athlete_id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": "'active'::character varying",
+        "name": "status",
+        "nullable": false,
+        "timezone": false,
+        "type": "VARCHAR(20)"
+      },
+      {
+        "default": "now()",
+        "name": "started_at",
+        "nullable": false,
+        "timezone": true,
+        "type": "TIMESTAMP"
+      },
+      {
+        "default": null,
+        "name": "ended_at",
+        "nullable": true,
+        "timezone": true,
+        "type": "TIMESTAMP"
+      }
+    ],
+    "foreign_keys": [
+      {
+        "constrained_columns": [
+          "athlete_id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "referred_columns": [
+          "id"
+        ],
+        "referred_table": "users"
+      },
+      {
+        "constrained_columns": [
+          "coach_id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "referred_columns": [
+          "id"
+        ],
+        "referred_table": "users"
+      }
+    ],
+    "indexes": [
+      {
+        "column_names": [
+          "athlete_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        },
+        "name": "idx_coach_athletes_athlete",
+        "unique": false
+      },
+      {
+        "column_names": [
+          "coach_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        },
+        "name": "idx_coach_athletes_coach",
+        "unique": false
+      }
+    ],
+    "unique_columns": [
+      [
+        "coach_id",
+        "athlete_id"
+      ]
+    ]
+  },
+  "coach_profiles": {
+    "checks": [
+      "years_experience IS NULL OR years_experience >= 0"
+    ],
+    "columns": [
+      {
+        "default": null,
+        "name": "user_id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": null,
+        "name": "bio",
+        "nullable": true,
+        "timezone": false,
+        "type": "TEXT"
+      },
+      {
+        "default": null,
+        "name": "specialty",
+        "nullable": true,
+        "timezone": false,
+        "type": "VARCHAR(150)"
+      },
+      {
+        "default": null,
+        "name": "years_experience",
+        "nullable": true,
+        "timezone": false,
+        "type": "INTEGER"
+      },
+      {
+        "default": "now()",
+        "name": "created_at",
+        "nullable": false,
+        "timezone": true,
+        "type": "TIMESTAMP"
+      },
+      {
+        "default": "now()",
+        "name": "updated_at",
+        "nullable": false,
+        "timezone": true,
+        "type": "TIMESTAMP"
+      }
+    ],
+    "foreign_keys": [
+      {
+        "constrained_columns": [
+          "user_id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "referred_columns": [
+          "id"
+        ],
+        "referred_table": "users"
+      }
+    ],
+    "indexes": [],
+    "unique_columns": []
+  },
+  "exercises": {
+    "checks": [],
+    "columns": [
+      {
+        "default": "gen_random_uuid()",
+        "name": "id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": null,
+        "name": "slug",
+        "nullable": false,
+        "timezone": false,
+        "type": "VARCHAR(120)"
+      },
+      {
+        "default": null,
+        "name": "name",
+        "nullable": false,
+        "timezone": false,
+        "type": "VARCHAR(150)"
+      },
+      {
+        "default": null,
+        "name": "category",
+        "nullable": true,
+        "timezone": false,
+        "type": "VARCHAR(80)"
+      },
+      {
+        "default": null,
+        "name": "body_area",
+        "nullable": true,
+        "timezone": false,
+        "type": "VARCHAR(80)"
+      },
+      {
+        "default": null,
+        "name": "movement_pattern",
+        "nullable": true,
+        "timezone": false,
+        "type": "VARCHAR(80)"
+      },
+      {
+        "default": null,
+        "name": "equipment",
+        "nullable": true,
+        "timezone": false,
+        "type": "VARCHAR(80)"
+      },
+      {
+        "default": null,
+        "name": "difficulty",
+        "nullable": true,
+        "timezone": false,
+        "type": "VARCHAR(50)"
+      },
+      {
+        "default": null,
+        "name": "purpose",
+        "nullable": true,
+        "timezone": false,
+        "type": "VARCHAR(100)"
+      },
+      {
+        "default": "true",
+        "name": "is_active",
+        "nullable": false,
+        "timezone": false,
+        "type": "BOOLEAN"
+      },
+      {
+        "default": "now()",
+        "name": "created_at",
+        "nullable": false,
+        "timezone": true,
+        "type": "TIMESTAMP"
+      },
+      {
+        "default": "now()",
+        "name": "updated_at",
+        "nullable": false,
+        "timezone": true,
+        "type": "TIMESTAMP"
+      }
+    ],
+    "foreign_keys": [],
+    "indexes": [],
+    "unique_columns": [
+      [
+        "slug"
+      ]
+    ]
+  },
+  "set_results": {
+    "checks": [
+      "actual_reps >= 0",
+      "actual_weight >= 0::numeric",
+      "rpe IS NULL OR rpe >= 1::numeric AND rpe <= 10::numeric",
+      "weight_unit::text = ANY (ARRAY['kg'::character varying, 'lb'::character varying]::text[])"
+    ],
+    "columns": [
+      {
+        "default": "gen_random_uuid()",
+        "name": "id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": null,
+        "name": "workout_result_id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": null,
+        "name": "workout_exercise_id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": null,
+        "name": "workout_set_id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": null,
+        "name": "actual_reps",
+        "nullable": false,
+        "timezone": false,
+        "type": "INTEGER"
+      },
+      {
+        "default": "0",
+        "name": "actual_weight",
+        "nullable": false,
+        "timezone": false,
+        "type": "NUMERIC(8, 2)"
+      },
+      {
+        "default": null,
+        "name": "weight_unit",
+        "nullable": false,
+        "timezone": false,
+        "type": "VARCHAR(10)"
+      },
+      {
+        "default": null,
+        "name": "rpe",
+        "nullable": true,
+        "timezone": false,
+        "type": "NUMERIC(3, 1)"
+      },
+      {
+        "default": "true",
+        "name": "completed",
+        "nullable": false,
+        "timezone": false,
+        "type": "BOOLEAN"
+      },
+      {
+        "default": null,
+        "name": "athlete_notes",
+        "nullable": true,
+        "timezone": false,
+        "type": "TEXT"
+      },
+      {
+        "default": "now()",
+        "name": "created_at",
+        "nullable": false,
+        "timezone": true,
+        "type": "TIMESTAMP"
+      }
+    ],
+    "foreign_keys": [
+      {
+        "constrained_columns": [
+          "workout_exercise_id"
+        ],
+        "options": {
+          "ondelete": "RESTRICT"
+        },
+        "referred_columns": [
+          "id"
+        ],
+        "referred_table": "workout_exercises"
+      },
+      {
+        "constrained_columns": [
+          "workout_result_id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "referred_columns": [
+          "id"
+        ],
+        "referred_table": "workout_results"
+      },
+      {
+        "constrained_columns": [
+          "workout_set_id"
+        ],
+        "options": {
+          "ondelete": "RESTRICT"
+        },
+        "referred_columns": [
+          "id"
+        ],
+        "referred_table": "workout_sets"
+      }
+    ],
+    "indexes": [
+      {
+        "column_names": [
+          "workout_exercise_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        },
+        "name": "idx_set_results_workout_exercise",
+        "unique": false
+      },
+      {
+        "column_names": [
+          "workout_result_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        },
+        "name": "idx_set_results_workout_result",
+        "unique": false
+      }
+    ],
+    "unique_columns": [
+      [
+        "workout_result_id",
+        "workout_set_id"
+      ]
+    ]
+  },
+  "users": {
+    "checks": [
+      "role::text = ANY (ARRAY['athlete'::character varying, 'coach'::character varying, 'doctor'::character varying, 'nutritionist'::character varying, 'admin'::character varying]::text[])"
+    ],
+    "columns": [
+      {
+        "default": "gen_random_uuid()",
+        "name": "id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": null,
+        "name": "email",
+        "nullable": true,
+        "timezone": false,
+        "type": "VARCHAR(255)"
+      },
+      {
+        "default": null,
+        "name": "phone",
+        "nullable": true,
+        "timezone": false,
+        "type": "VARCHAR(50)"
+      },
+      {
+        "default": null,
+        "name": "full_name",
+        "nullable": false,
+        "timezone": false,
+        "type": "VARCHAR(150)"
+      },
+      {
+        "default": null,
+        "name": "role",
+        "nullable": false,
+        "timezone": false,
+        "type": "VARCHAR(30)"
+      },
+      {
+        "default": "true",
+        "name": "is_active",
+        "nullable": false,
+        "timezone": false,
+        "type": "BOOLEAN"
+      },
+      {
+        "default": "now()",
+        "name": "created_at",
+        "nullable": false,
+        "timezone": true,
+        "type": "TIMESTAMP"
+      },
+      {
+        "default": "now()",
+        "name": "updated_at",
+        "nullable": false,
+        "timezone": true,
+        "type": "TIMESTAMP"
+      },
+      {
+        "default": null,
+        "name": "password_hash",
+        "nullable": true,
+        "timezone": false,
+        "type": "VARCHAR"
+      }
+    ],
+    "foreign_keys": [],
+    "indexes": [
+      {
+        "column_names": [
+          "role"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        },
+        "name": "idx_users_role",
+        "unique": false
+      }
+    ],
+    "unique_columns": [
+      [
+        "email"
+      ],
+      [
+        "phone"
+      ]
+    ]
+  },
+  "workout_exercises": {
+    "checks": [
+      "exercise_order >= 1"
+    ],
+    "columns": [
+      {
+        "default": "gen_random_uuid()",
+        "name": "id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": null,
+        "name": "workout_id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": null,
+        "name": "exercise_id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": null,
+        "name": "exercise_order",
+        "nullable": false,
+        "timezone": false,
+        "type": "INTEGER"
+      },
+      {
+        "default": null,
+        "name": "coaching_note",
+        "nullable": true,
+        "timezone": false,
+        "type": "TEXT"
+      },
+      {
+        "default": "now()",
+        "name": "created_at",
+        "nullable": false,
+        "timezone": true,
+        "type": "TIMESTAMP"
+      }
+    ],
+    "foreign_keys": [
+      {
+        "constrained_columns": [
+          "exercise_id"
+        ],
+        "options": {
+          "ondelete": "RESTRICT"
+        },
+        "referred_columns": [
+          "id"
+        ],
+        "referred_table": "exercises"
+      },
+      {
+        "constrained_columns": [
+          "workout_id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "referred_columns": [
+          "id"
+        ],
+        "referred_table": "workouts"
+      }
+    ],
+    "indexes": [
+      {
+        "column_names": [
+          "workout_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        },
+        "name": "idx_workout_exercises_workout",
+        "unique": false
+      }
+    ],
+    "unique_columns": [
+      [
+        "workout_id",
+        "exercise_order"
+      ]
+    ]
+  },
+  "workout_results": {
+    "checks": [],
+    "columns": [
+      {
+        "default": "gen_random_uuid()",
+        "name": "id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": null,
+        "name": "workout_id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": null,
+        "name": "athlete_id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": "now()",
+        "name": "completed_at",
+        "nullable": false,
+        "timezone": true,
+        "type": "TIMESTAMP"
+      },
+      {
+        "default": null,
+        "name": "athlete_notes",
+        "nullable": true,
+        "timezone": false,
+        "type": "TEXT"
+      },
+      {
+        "default": "now()",
+        "name": "created_at",
+        "nullable": false,
+        "timezone": true,
+        "type": "TIMESTAMP"
+      }
+    ],
+    "foreign_keys": [
+      {
+        "constrained_columns": [
+          "athlete_id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "referred_columns": [
+          "id"
+        ],
+        "referred_table": "users"
+      },
+      {
+        "constrained_columns": [
+          "workout_id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "referred_columns": [
+          "id"
+        ],
+        "referred_table": "workouts"
+      }
+    ],
+    "indexes": [
+      {
+        "column_names": [
+          "athlete_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        },
+        "name": "idx_workout_results_athlete",
+        "unique": false
+      },
+      {
+        "column_names": [
+          "completed_at"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        },
+        "name": "idx_workout_results_completed_at",
+        "unique": false
+      }
+    ],
+    "unique_columns": [
+      [
+        "workout_id",
+        "athlete_id"
+      ]
+    ]
+  },
+  "workout_sets": {
+    "checks": [
+      "set_number >= 1",
+      "target_reps >= 0",
+      "target_weight >= 0::numeric",
+      "weight_unit::text = ANY (ARRAY['kg'::character varying, 'lb'::character varying]::text[])"
+    ],
+    "columns": [
+      {
+        "default": "gen_random_uuid()",
+        "name": "id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": null,
+        "name": "workout_exercise_id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": null,
+        "name": "set_number",
+        "nullable": false,
+        "timezone": false,
+        "type": "INTEGER"
+      },
+      {
+        "default": null,
+        "name": "target_reps",
+        "nullable": false,
+        "timezone": false,
+        "type": "INTEGER"
+      },
+      {
+        "default": "0",
+        "name": "target_weight",
+        "nullable": false,
+        "timezone": false,
+        "type": "NUMERIC(8, 2)"
+      },
+      {
+        "default": "'kg'::character varying",
+        "name": "weight_unit",
+        "nullable": false,
+        "timezone": false,
+        "type": "VARCHAR(10)"
+      },
+      {
+        "default": "now()",
+        "name": "created_at",
+        "nullable": false,
+        "timezone": true,
+        "type": "TIMESTAMP"
+      }
+    ],
+    "foreign_keys": [
+      {
+        "constrained_columns": [
+          "workout_exercise_id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "referred_columns": [
+          "id"
+        ],
+        "referred_table": "workout_exercises"
+      }
+    ],
+    "indexes": [
+      {
+        "column_names": [
+          "workout_exercise_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        },
+        "name": "idx_workout_sets_exercise",
+        "unique": false
+      }
+    ],
+    "unique_columns": [
+      [
+        "workout_exercise_id",
+        "set_number"
+      ]
+    ]
+  },
+  "workouts": {
+    "checks": [
+      "status::text = ANY (ARRAY['planned'::character varying, 'active'::character varying, 'completed'::character varying, 'cancelled'::character varying]::text[])"
+    ],
+    "columns": [
+      {
+        "default": "gen_random_uuid()",
+        "name": "id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": null,
+        "name": "athlete_id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": null,
+        "name": "coach_id",
+        "nullable": false,
+        "timezone": false,
+        "type": "UUID"
+      },
+      {
+        "default": null,
+        "name": "title",
+        "nullable": false,
+        "timezone": false,
+        "type": "VARCHAR(180)"
+      },
+      {
+        "default": null,
+        "name": "category",
+        "nullable": true,
+        "timezone": false,
+        "type": "VARCHAR(80)"
+      },
+      {
+        "default": null,
+        "name": "focus",
+        "nullable": true,
+        "timezone": false,
+        "type": "VARCHAR(120)"
+      },
+      {
+        "default": null,
+        "name": "scheduled_for",
+        "nullable": true,
+        "timezone": false,
+        "type": "DATE"
+      },
+      {
+        "default": "'planned'::character varying",
+        "name": "status",
+        "nullable": false,
+        "timezone": false,
+        "type": "VARCHAR(20)"
+      },
+      {
+        "default": null,
+        "name": "coach_notes",
+        "nullable": true,
+        "timezone": false,
+        "type": "TEXT"
+      },
+      {
+        "default": "now()",
+        "name": "created_at",
+        "nullable": false,
+        "timezone": true,
+        "type": "TIMESTAMP"
+      },
+      {
+        "default": "now()",
+        "name": "updated_at",
+        "nullable": false,
+        "timezone": true,
+        "type": "TIMESTAMP"
+      }
+    ],
+    "foreign_keys": [
+      {
+        "constrained_columns": [
+          "athlete_id"
+        ],
+        "options": {
+          "ondelete": "CASCADE"
+        },
+        "referred_columns": [
+          "id"
+        ],
+        "referred_table": "users"
+      },
+      {
+        "constrained_columns": [
+          "coach_id"
+        ],
+        "options": {
+          "ondelete": "RESTRICT"
+        },
+        "referred_columns": [
+          "id"
+        ],
+        "referred_table": "users"
+      }
+    ],
+    "indexes": [
+      {
+        "column_names": [
+          "athlete_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        },
+        "name": "idx_workouts_athlete",
+        "unique": false
+      },
+      {
+        "column_names": [
+          "coach_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        },
+        "name": "idx_workouts_coach",
+        "unique": false
+      },
+      {
+        "column_names": [
+          "scheduled_for"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        },
+        "name": "idx_workouts_scheduled_for",
+        "unique": false
+      }
+    ],
+    "unique_columns": []
+  }
+}

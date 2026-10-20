@@ -31,9 +31,8 @@ class WorkoutRepository:
             )
             .options(*self._detail_options())
             .order_by(Workout.created_at.desc().nullslast(), Workout.id)
-            .limit(1)
         )
-        return await self.session.scalar(stmt)
+        return (await self.session.execute(stmt)).scalar_one_or_none()
 
     async def get_workout_detail(self, workout_id: UUID) -> Workout | None:
         stmt = select(Workout).where(Workout.id == workout_id).options(*self._detail_options())
@@ -136,3 +135,15 @@ class WorkoutRepository:
             .order_by(SetResult.workout_result_id, WorkoutExercise.exercise_order, WorkoutSet.set_number)
         )
         return list((await self.session.execute(stmt)).all())
+
+    async def progress_totals(self, athlete_id: UUID) -> tuple[int, int, int]:
+        workouts = select(func.count(WorkoutResult.id)).where(WorkoutResult.athlete_id == athlete_id).scalar_subquery()
+        completed = (select(func.count(SetResult.id))
+            .join(WorkoutResult, WorkoutResult.id == SetResult.workout_result_id)
+            .where(WorkoutResult.athlete_id == athlete_id, SetResult.completed.is_(True)).scalar_subquery())
+        prescribed = (select(func.count(WorkoutSet.id))
+            .join(WorkoutExercise, WorkoutExercise.id == WorkoutSet.workout_exercise_id)
+            .join(WorkoutResult, WorkoutResult.workout_id == WorkoutExercise.workout_id)
+            .where(WorkoutResult.athlete_id == athlete_id).scalar_subquery())
+        row = (await self.session.execute(select(workouts, completed, prescribed))).one()
+        return tuple(int(value) for value in row)

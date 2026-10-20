@@ -210,3 +210,21 @@ Read-only persistence verification for a workout ID printed by that test:
 ```powershell
 .\.venv\Scripts\python.exe scripts/verify_mvp_persistence.py <workout-id>
 ```
+
+## MVP hardening
+
+See [safe database bootstrap/adoption](docs/database_bootstrap.md) before upgrading.
+Fresh databases now upgrade from a complete guarded baseline. Existing initialized
+schemas must be audited and safely adopted; never run a fresh bootstrap on development.
+The hardening migration reuses result uniqueness and adds a partial unique schedule
+index (one active/planned workout per athlete/date). Duplicate rows stop migration
+without automatic deletion. Apply the reviewed migration before deploying this code.
+
+`GET /v1/athletes/me/progress-summary` returns real SQL aggregates plus at most ten
+recent activities. Flutter Progress uses it independently of paginated History.
+Scheduling uses explicit `SCHEDULING_TIMEZONE` (default `Asia/Tehran`). Athlete-specific
+zones and multi-session schedules remain v0.2 work, with no Performance Grading added.
+
+CI uses Python 3.12 and its own PostgreSQL service, never development data. Run the
+opt-in PostgreSQL suite described in the bootstrap guide for fresh schema, adoption,
+real concurrent submissions and full authenticated Coach-to-Athlete API verification.

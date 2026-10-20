@@ -1,3 +1,4 @@
+from app.core.scheduling import scheduling_date
 from datetime import UTC, date
 from decimal import Decimal
 from uuid import UUID, uuid4
@@ -25,7 +26,7 @@ class WorkoutService:
         self.repository = repository
 
     async def get_today_workout(self, athlete_id: UUID) -> WorkoutDetailResponse | None:
-        workout = await self.repository.get_today_workout(athlete_id, date.today())
+        workout = await self.repository.get_today_workout(athlete_id, scheduling_date())
         return self._to_workout_detail(workout) if workout else None
 
     async def get_workout_for_athlete(self, workout_id: UUID, athlete_id: UUID) -> WorkoutDetailResponse:
@@ -186,3 +187,12 @@ class WorkoutService:
                 )
             ],
         )
+
+    async def get_progress_summary(self, athlete_id: UUID):
+        from app.schemas.progress import ProgressSummary, WorkoutActivity
+        workouts, completed, prescribed = await self.repository.progress_totals(athlete_id)
+        recent = await self.repository.get_history(athlete_id, 1, 10)
+        return ProgressSummary(total_completed_workouts=workouts, total_completed_sets=completed,
+            total_prescribed_sets=prescribed, recent_activity=[WorkoutActivity(
+                workout_id=row.workout_id, workout_title=row.title, completed_at=row.completed_at,
+                completed_sets=row.completed_sets, total_sets=row.total_sets) for row in recent])

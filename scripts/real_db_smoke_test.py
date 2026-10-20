@@ -16,6 +16,7 @@ from app.core.asyncio_compat import configure_event_loop_policy
 
 configure_event_loop_policy()
 
+from app.core.scheduling import scheduling_date
 from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal, engine
 from app.repositories.workout_repository import WorkoutRepository
@@ -117,7 +118,7 @@ async def main() -> int:
         print("Database connection: OK")
         print(f"Database: {database_name}")
         print(f"Athlete: {settings.demo_athlete_id}")
-        print(f"No planned/active workout found for today ({date.today().isoformat()}).")
+        print(f"No planned/active workout found for today ({scheduling_date().isoformat()}).")
         return 1
 
     total_sets = sum(len(exercise.sets) for exercise in workout.exercises)

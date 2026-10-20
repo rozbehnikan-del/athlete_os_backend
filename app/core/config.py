@@ -9,6 +9,8 @@ from sqlalchemy import URL
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
+    scheduling_timezone: str = Field(default="Asia/Tehran", alias="SCHEDULING_TIMEZONE")
+
     database_host: str = Field(default="localhost", alias="DATABASE_HOST")
     database_port: int = Field(default=5432, alias="DATABASE_PORT")
     database_name: str = Field(default="athlete_os", alias="DATABASE_NAME")
@@ -28,6 +30,8 @@ class Settings(BaseSettings):
     demo_coach_password: str = Field(default="", alias="DEMO_COACH_PASSWORD")
 
     def model_post_init(self, __context: object) -> None:
+        from zoneinfo import ZoneInfo
+        ZoneInfo(self.scheduling_timezone)
         if self.environment != "test" and not self.jwt_secret_key:
             raise ValueError("JWT_SECRET_KEY must be set outside test environments.")
         if self.environment not in {"local", "test"} and self.jwt_secret_key == "change-me":

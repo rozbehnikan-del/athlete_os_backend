@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID as PyUUID
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text, text
+from sqlalchemy import Boolean, UniqueConstraint, DateTime, ForeignKey, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -11,6 +11,7 @@ from app.core.database import Base
 
 class WorkoutResult(Base):
     __tablename__ = "workout_results"
+    __table_args__ = (UniqueConstraint("workout_id", "athlete_id", name="uq_workout_results_workout_athlete"),)
 
     id: Mapped[PyUUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     workout_id: Mapped[PyUUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workouts.id"), nullable=False)

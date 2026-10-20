@@ -1,3 +1,4 @@
+from app.core.scheduling import scheduling_date
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import uuid4
@@ -28,8 +29,8 @@ class CoachService:
     async def roster(self, coach_id):
         return [self.athlete(row) for row in await self.repository.athletes(coach_id)]
 
-    async def assigned(self, coach_id, athlete_id):
-        rows = await self.repository.athletes(coach_id, athlete_id)
+    async def assigned(self, coach_id, athlete_id, *, for_update=False):
+        rows = await self.repository.athletes(coach_id, athlete_id, for_update=True) if for_update else await self.repository.athletes(coach_id, athlete_id)
         if not rows:
             raise ApiError(404, 'ATHLETE_NOT_FOUND', 'Assigned athlete not found.')
         return self.athlete(rows[0])
@@ -44,7 +45,7 @@ class CoachService:
 
     async def create(self, coach_id, athlete_id, payload):
         try:
-            await self.assigned(coach_id, athlete_id)
+            await self.assigned(coach_id, athlete_id, for_update=True)
             ids = {e.exercise_id for e in payload.exercises}
             if await self.repository.exercise_ids(ids) != ids:
                 raise ApiError(422, 'INVALID_EXERCISE', 'One or more exercises are unavailable.')
@@ -52,7 +53,7 @@ class CoachService:
             workout = Workout(id=uuid4(), athlete_id=athlete_id, coach_id=coach_id,
                 title=payload.title, category=payload.category, focus=payload.focus,
                 scheduled_for=payload.scheduled_for,
-                status='active' if payload.scheduled_for == date.today() else 'planned',
+                status='active' if payload.scheduled_for == scheduling_date() else 'planned',
                 created_at=now, updated_at=now)
             workout.workout_exercises = [WorkoutExercise(
                 id=uuid4(), exercise_id=e.exercise_id, exercise_order=e.order,
@@ -69,6 +70,9 @@ class CoachService:
             return response
         except IntegrityError as exc:
             await self.repository.session.rollback()
+            constraint = getattr(getattr(exc.orig, 'diag', None), 'constraint_name', None)
+            if constraint == 'uq_workouts_athlete_scheduled_open':
+                raise ApiError(409, 'WORKOUT_SCHEDULE_CONFLICT', 'An active or planned workout already exists for this athlete and date.') from exc
             raise ApiError(409, 'WORKOUT_CONFLICT', 'Workout could not be assigned. Refresh and retry.') from exc
         except Exception:
             await self.repository.session.rollback()

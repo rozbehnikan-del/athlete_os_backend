@@ -58,3 +58,13 @@ async def get_workout_history(
     service: WorkoutService = Depends(get_workout_service),
 ) -> WorkoutHistoryResponse:
     return await service.get_history(current_athlete.id, page, per_page)
+
+
+from app.schemas.progress import ProgressSummaryResponse
+
+@router.get('/athletes/me/progress-summary', response_model=ProgressSummaryResponse)
+async def get_progress_summary(
+    current_athlete: User = Depends(get_current_athlete),
+    service: WorkoutService = Depends(get_workout_service),
+) -> ProgressSummaryResponse:
+    return ProgressSummaryResponse(data=await service.get_progress_summary(current_athlete.id))

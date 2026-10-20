@@ -1,7 +1,7 @@
 """add user password hash
 
 Revision ID: 0001_add_user_password_hash
-Revises:
+Revises: 0000_initial_schema
 Create Date: 2026-10-14
 """
 
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0001_add_user_password_hash"
-down_revision: str | None = None
+down_revision: str | None = "0000_initial_schema"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

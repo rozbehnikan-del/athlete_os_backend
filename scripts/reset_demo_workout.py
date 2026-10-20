@@ -15,6 +15,7 @@ from app.core.asyncio_compat import configure_event_loop_policy
 
 configure_event_loop_policy()
 
+from app.core.scheduling import scheduling_date
 from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal
 from app.models.workout import Workout
@@ -38,7 +39,7 @@ async def reset_demo_workout() -> int:
         print(f"Expected database: {EXPECTED_DATABASE_NAME}")
         return 1
 
-    scheduled_for = date.today()
+    scheduled_for = scheduling_date()
     async with AsyncSessionLocal() as session:
         async with session.begin():
             workout_result_id = await session.scalar(

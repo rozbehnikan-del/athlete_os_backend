@@ -231,3 +231,16 @@ def build_result_payload(fake_repository):
         "notes": "Felt strong today.",
         "sets": sets,
     }
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """Keep configured credentials out of driver tracebacks and captured logs."""
+    outcome = yield
+    report = outcome.get_result()
+    from app.core.config import get_settings
+    secret = get_settings().database_password
+    if secret:
+        if report.longrepr:
+            report.longrepr = str(report.longrepr).replace(secret, '<redacted>')
+        report.sections = [(name, content.replace(secret, '<redacted>')) for name, content in report.sections]
