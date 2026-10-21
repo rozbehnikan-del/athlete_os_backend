@@ -7,6 +7,7 @@ from app.api.deps import get_current_athlete, get_session
 from app.models.user import User
 from app.repositories.workout_repository import WorkoutRepository
 from app.schemas.history import WorkoutHistoryResponse
+from app.schemas.progress import ProgressSummaryResponse
 from app.schemas.workout import WorkoutDetailDataResponse
 from app.schemas.workout_result import WorkoutResultCreate, WorkoutResultDataResponse
 from app.services.workout_service import WorkoutService
@@ -59,8 +60,6 @@ async def get_workout_history(
 ) -> WorkoutHistoryResponse:
     return await service.get_history(current_athlete.id, page, per_page)
 
-
-from app.schemas.progress import ProgressSummaryResponse
 
 @router.get('/athletes/me/progress-summary', response_model=ProgressSummaryResponse)
 async def get_progress_summary(

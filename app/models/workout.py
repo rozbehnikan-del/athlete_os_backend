@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID as PyUUID
 
-from sqlalchemy import Index, text, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -11,7 +11,10 @@ from app.core.database import Base
 
 class Workout(Base):
     __tablename__ = "workouts"
-    __table_args__ = (Index("uq_workouts_athlete_scheduled_open", "athlete_id", "scheduled_for", unique=True, postgresql_where=text("status IN ('planned', 'active')")),)
+    __table_args__ = (
+        Index("uq_workouts_athlete_scheduled_open", "athlete_id", "scheduled_for",
+              unique=True, postgresql_where=text("status IN ('planned', 'active')")),
+    )
 
     id: Mapped[PyUUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     athlete_id: Mapped[PyUUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)

@@ -94,7 +94,7 @@ async def seed(url, *, sets=2):
 
 def test_fresh_bootstrap_tables_and_constraints(database):
     _, url = database
-    engine = create_engine(url)
+    engine = create_engine(url, poolclass=NullPool)
     try:
         i = inspect(engine)
         from app.core.database import Base
@@ -163,7 +163,7 @@ def test_schedule_constraint_lifecycle(database):
 def test_adoption_and_duplicate_guard():
     # An existing pre-hardening database retains rows and reuses its unique index.
     with disposable_database('0001_add_user_password_hash') as (name,url):
-        engine=create_engine(url)
+        engine=create_engine(url, poolclass=NullPool)
         with engine.begin() as c:
             coach,athlete=uuid4(),uuid4()
             c.execute(text("insert into users(id,full_name,role) values (:c,'Coach','coach'),(:a,'Athlete','athlete')"),{'c':coach,'a':athlete})
