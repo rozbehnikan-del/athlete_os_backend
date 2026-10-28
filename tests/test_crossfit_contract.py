@@ -71,3 +71,53 @@ def test_score_payload_shapes(score):
 def test_invalid_score_payloads(payload):
     with pytest.raises(ValidationError):
         WodResultCreate.model_validate(payload)
+
+def test_max_load_attempts_preserve_failed_lifts_and_best_success():
+    result = WodResultCreate.model_validate(
+        {
+            "scaling": "rx",
+            "score": {
+                "type": "load",
+                "unit": "kg",
+                "load": 85,
+                "attempts": [
+                    {"load": 80, "successful": True},
+                    {"load": 90, "successful": False},
+                    {"load": 85, "successful": True},
+                ],
+            },
+        }
+    )
+    assert result.score_dict()["load"] == 85
+    assert result.score_dict()["attempts"][1]["successful"] is False
+
+
+@pytest.mark.parametrize(
+    "score",
+    [
+        {
+            "type": "load",
+            "unit": "kg",
+            "load": 90,
+            "attempts": [
+                {"load": 85, "successful": True},
+                {"load": 90, "successful": False},
+            ],
+        },
+        {
+            "type": "load",
+            "unit": "kg",
+            "load": 80,
+            "attempts": [{"load": 80, "successful": False}],
+        },
+        {
+            "type": "load",
+            "unit": "kg",
+            "load": 80,
+            "attempts": [{"load": -80, "successful": True}],
+        },
+    ],
+)
+def test_invalid_max_load_attempts(score):
+    with pytest.raises(ValidationError):
+        WodResultCreate.model_validate({"scaling": "rx", "score": score})
