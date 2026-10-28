@@ -69,7 +69,7 @@ class TrainingSession(Base):
         server_default=text("NOW()"),
     )
 
-    workout = relationship("Workout")
+    workout = relationship("Workout", back_populates="training_session")
     blocks = relationship(
         "TrainingBlock",
         back_populates="session",
@@ -217,5 +217,5 @@ class WodResult(Base):
         server_default=text("NOW()"),
     )
 
-    workout_result = relationship("WorkoutResult")
+    workout_result = relationship("WorkoutResult", back_populates="wod_results")
     wod = relationship("Wod", back_populates="results")
