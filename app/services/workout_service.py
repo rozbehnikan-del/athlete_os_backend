@@ -119,7 +119,8 @@ class WorkoutService:
                 )
                 for incoming_set, workout_set in zip(payload.sets, resolved_sets, strict=True)
             ]
-            await self.repository.add_set_results(set_results)
+            if set_results:
+                await self.repository.add_set_results(set_results)
             wod_results = [
                 WodResult(
                     id=uuid4(),
@@ -133,7 +134,8 @@ class WorkoutService:
                 )
                 for incoming_wod in payload.wods
             ]
-            await self.repository.add_wod_results(wod_results)
+            if wod_results:
+                await self.repository.add_wod_results(wod_results)
             await self.repository.mark_workout_completed(workout_id)
             await self.repository.session.commit()
         except IntegrityError as exc:
@@ -208,7 +210,7 @@ class WorkoutService:
             coach=self._coach_summary(workout.coach),
             session=(
                 TrainingSessionResponse(
-                    id=workout.training_session.id,
+                    id=getattr(workout, "training_session").id,
                     blocks=[
                         TrainingBlockResponse(
                             id=block.id,
@@ -233,12 +235,12 @@ class WorkoutService:
                             ),
                         )
                         for block in sorted(
-                            workout.training_session.blocks,
+                            getattr(workout, "training_session").blocks,
                             key=lambda item: item.block_order,
                         )
                     ],
                 )
-                if workout.training_session
+                if getattr(workout, "training_session", None)
                 else None
             ),
             exercises=[
