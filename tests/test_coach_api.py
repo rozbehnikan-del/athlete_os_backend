@@ -9,7 +9,7 @@ from app.api.deps import get_current_user
 from app.api.v1.coaches import get_coach_service
 from app.main import app
 from app.services.coach_service import CoachService
-from app.schemas.coach import WorkoutCreate
+from app.schemas.coach import TrainingSessionCreate, WorkoutCreate
 from tests.conftest import COACH_ID, ATHLETE_ID, FakeRepository
 
 EXERCISE_ID = uuid4()
@@ -128,3 +128,106 @@ async def test_creation_failure_rolls_back(setup):
     repo.session.rollback.assert_awaited_once()
     repo.session.commit.assert_not_awaited()
 
+
+
+def session_payload():
+    return {
+        "title": "Engine + Strength",
+        "scheduled_for": date.today().isoformat(),
+        "blocks": [
+            {
+                "order": 1,
+                "type": "warmup",
+                "title": "Movement Prep",
+                "prescription": {"duration_minutes": 8},
+            },
+            {
+                "order": 2,
+                "type": "metcon",
+                "title": "AMRAP 12",
+                "prescription": {
+                    "movements": [
+                        {"name": "Wall Ball", "reps": 10},
+                        {"name": "Toes-to-Bar", "reps": 8},
+                        {"name": "Burpee", "reps": 6},
+                    ]
+                },
+                "wod": {
+                    "format": "amrap",
+                    "score_type": "rounds_reps",
+                    "duration_seconds": 720,
+                    "scaling_options": ["rx", "scaled"],
+                },
+            },
+        ],
+    }
+
+
+def test_crossfit_session_creation_returns_blocks_and_wod(setup):
+    login()
+    client, repo, _ = setup
+
+    response = client.post(
+        f"/v1/coaches/me/athletes/{ATHLETE_ID}/sessions",
+        json=session_payload(),
+    )
+
+    assert response.status_code == 201, response.text
+    data = response.json()["data"]
+    assert data["title"] == "Engine + Strength"
+    assert data["exercises"] == []
+    assert data["session"]["blocks"][0]["type"] == "warmup"
+    metcon = data["session"]["blocks"][1]
+    assert metcon["type"] == "metcon"
+    assert metcon["wod"]["format"] == "amrap"
+    assert metcon["wod"]["score_type"] == "rounds_reps"
+    assert metcon["wod"]["duration_seconds"] == 720
+    assert metcon["wod"]["scaling_options"] == ["rx", "scaled"]
+    repo.session.commit.assert_awaited_once()
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda data: data["blocks"].append(deepcopy(data["blocks"][0])),
+        lambda data: data["blocks"][1]["wod"].update({"score_type": "time"}),
+        lambda data: data["blocks"][1]["wod"].pop("duration_seconds"),
+        lambda data: data["blocks"][0].update(
+            {
+                "wod": {
+                    "format": "max_load",
+                    "score_type": "load",
+                    "scaling_options": ["rx"],
+                }
+            }
+        ),
+    ],
+)
+def test_invalid_crossfit_session_is_rejected_before_write(setup, mutate):
+    login()
+    data = session_payload()
+    mutate(data)
+
+    response = setup[0].post(
+        f"/v1/coaches/me/athletes/{ATHLETE_ID}/sessions",
+        json=data,
+    )
+
+    assert response.status_code == 422
+    assert not setup[1].created
+
+
+@pytest.mark.anyio
+async def test_crossfit_session_creation_failure_rolls_back(setup):
+    _, repo, service = setup
+    repo.fail = True
+
+    with pytest.raises(RuntimeError):
+        await service.create_session(
+            COACH_ID,
+            ATHLETE_ID,
+            TrainingSessionCreate.model_validate(session_payload()),
+        )
+
+    repo.session.rollback.assert_awaited_once()
+    repo.session.commit.assert_not_awaited()
