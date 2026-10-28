@@ -1,10 +1,20 @@
 ﻿"""Read-only adoption preflight; never stamps or modifies the configured database."""
 import json
+import re
 import sys
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from sqlalchemy import create_engine, inspect, text
 from app.core.config import get_settings
+
+
+def _normalize_check(value):
+    value = (value or '').lower()
+    value = re.sub(r'::(?:character varying|text|numeric)(?:\\[\\])?', '', value)
+    value = re.sub(r'\\s+', '', value)
+    while value.startswith('(') and value.endswith(')'):
+        value = value[1:-1]
+    return value
 
 
 def audit(connection):
@@ -29,8 +39,9 @@ def audit(connection):
         fks=inspector.get_foreign_keys(table)
         for fk in contract['foreign_keys']:
             if not any(all(actual[k]==fk[k] for k in fk) for actual in fks): problems.append(f'{table}: foreign key differs on {fk["constrained_columns"]}')
-        checks={c['sqltext'] for c in inspector.get_check_constraints(table)}
-        if not set(contract['checks']).issubset(checks): problems.append(f'{table}: check constraints differ')
+        checks={_normalize_check(c['sqltext']) for c in inspector.get_check_constraints(table)}
+        expected_checks={_normalize_check(value) for value in contract['checks']}
+        if not expected_checks.issubset(checks): problems.append(f'{table}: check constraints differ')
         indexes={i['name']:i for i in inspector.get_indexes(table)}
         for index in contract['indexes']:
             actual_index=indexes.get(index['name'])
