@@ -1,5 +1,6 @@
 from datetime import UTC
 from decimal import Decimal
+from math import isfinite
 from uuid import UUID, uuid4
 
 from sqlalchemy.exc import IntegrityError
@@ -181,6 +182,30 @@ class WorkoutService:
                         "the prescribed WOD."
                     ),
                 )
+
+            if (
+                getattr(wod, "format", None) == "emom"
+                and incoming_wod.score.type == "intervals"
+            ):
+                targets = (getattr(wod, "score_config", None) or {}).get(
+                    "minute_targets"
+                )
+                if targets is not None:
+                    values = incoming_wod.score.values
+                    if (
+                        len(values) != len(targets)
+                        or any(
+                            not isfinite(value)
+                            or value < 0
+                            or not value.is_integer()
+                            for value in values
+                        )
+                    ):
+                        raise ApiError(
+                            400,
+                            "INVALID_EMOM_MINUTE_RESULTS",
+                            "Provide one nonnegative integer result per EMOM minute.",
+                        )
 
             allowed_scaling = set(
                 wod.scaling_options or []
