@@ -347,3 +347,138 @@ def test_reset_script_scope_constants_are_demo_only():
 
     assert str(DEMO_ATHLETE_ID) == "22222222-2222-4222-8222-222222222222"
     assert str(DEMO_WORKOUT_ID) == "77777777-7777-4777-8777-777777777777"
+
+
+class CrossFitResultRepository(FakeRepository):
+    def __init__(self):
+        super().__init__()
+        self.wod_id = uuid4()
+        self.foreign_wod_id = uuid4()
+        self.wod_results = []
+
+    async def get_wod(self, wod_id):
+        if wod_id == self.wod_id:
+            return SimpleNamespace(
+                id=self.wod_id,
+                score_type="rounds_reps",
+                scaling_options=["rx", "scaled"],
+                block=SimpleNamespace(
+                    session=SimpleNamespace(workout_id=WORKOUT_ID)
+                ),
+            )
+        if wod_id == self.foreign_wod_id:
+            return SimpleNamespace(
+                id=self.foreign_wod_id,
+                score_type="rounds_reps",
+                scaling_options=["rx"],
+                block=SimpleNamespace(
+                    session=SimpleNamespace(workout_id=FOREIGN_WORKOUT_ID)
+                ),
+            )
+        return None
+
+    async def add_wod_results(self, results):
+        self.wod_results.extend(results)
+
+    def rollback_pending_changes(self):
+        super().rollback_pending_changes()
+        self.wod_results.clear()
+
+
+def crossfit_result_payload(repository, **overrides):
+    entry = {
+        "wod_id": str(repository.wod_id),
+        "scaling": "rx",
+        "score": {"type": "rounds_reps", "rounds": 7, "reps": 14},
+        "dnf": False,
+        "rpe": 9,
+        "athlete_notes": "Held pace.",
+    }
+    entry.update(overrides)
+    return {
+        "completed_at": "2026-10-28T08:00:00Z",
+        "notes": "CrossFit result",
+        "wods": [entry],
+    }
+
+
+def _crossfit_client(repository):
+    app.dependency_overrides[get_workout_service] = lambda: WorkoutService(repository)
+    app.dependency_overrides[get_current_athlete] = lambda: SimpleNamespace(
+        id=ATHLETE_ID,
+        email="ali@athleteos.local",
+        phone=None,
+        full_name="Ali",
+        role="athlete",
+        is_active=True,
+    )
+    return TestClient(app)
+
+
+def test_wod_only_result_is_persisted_atomically():
+    repository = CrossFitResultRepository()
+    try:
+        with _crossfit_client(repository) as test_client:
+            response = test_client.post(
+                f"/v1/workouts/{WORKOUT_ID}/results",
+                json=crossfit_result_payload(repository),
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 201, response.text
+    assert response.json()["data"]["completed_sets"] == 0
+    assert response.json()["data"]["completed_wods"] == 1
+    assert len(repository.results) == 1
+    assert len(repository.set_results) == 0
+    assert len(repository.wod_results) == 1
+    saved = repository.wod_results[0]
+    assert saved.scaling == "rx"
+    assert saved.score == {"type": "rounds_reps", "rounds": 7, "reps": 14}
+    assert repository.workout.status == "completed"
+
+
+@pytest.mark.parametrize(
+    "entry,error_code",
+    [
+        ({"score": {"type": "time", "seconds": 342}}, "INVALID_WOD_SCORE"),
+        ({"scaling": "custom"}, "INVALID_SCALING"),
+    ],
+)
+def test_wod_result_must_match_prescription(entry, error_code):
+    repository = CrossFitResultRepository()
+    payload = crossfit_result_payload(repository)
+    payload["wods"][0].update(entry)
+    try:
+        with _crossfit_client(repository) as test_client:
+            response = test_client.post(
+                f"/v1/workouts/{WORKOUT_ID}/results",
+                json=payload,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == error_code
+    assert repository.results == []
+    assert repository.wod_results == []
+
+
+def test_foreign_wod_is_rejected():
+    repository = CrossFitResultRepository()
+    payload = crossfit_result_payload(
+        repository,
+        wod_id=str(repository.foreign_wod_id),
+    )
+    try:
+        with _crossfit_client(repository) as test_client:
+            response = test_client.post(
+                f"/v1/workouts/{WORKOUT_ID}/results",
+                json=payload,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_WOD"
+    assert repository.results == []
