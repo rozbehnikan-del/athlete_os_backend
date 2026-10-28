@@ -5,6 +5,7 @@ from sqlalchemy import Select, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
+from app.models.crossfit import TrainingBlock, TrainingSession, Wod, WodResult
 from app.models.user import User
 from app.models.workout import Workout, WorkoutExercise, WorkoutSet
 from app.models.workout_result import SetResult, WorkoutResult
@@ -19,6 +20,9 @@ class WorkoutRepository:
             joinedload(Workout.coach),
             selectinload(Workout.workout_exercises).joinedload(WorkoutExercise.exercise),
             selectinload(Workout.workout_exercises).selectinload(WorkoutExercise.workout_sets),
+            selectinload(Workout.training_session)
+            .selectinload(TrainingSession.blocks)
+            .selectinload(TrainingBlock.wod),
         )
 
     async def get_today_workout(self, athlete_id: UUID, today: date) -> Workout | None:
@@ -59,6 +63,22 @@ class WorkoutRepository:
         return result
 
     async def add_set_results(self, results: list[SetResult]) -> None:
+        self.session.add_all(results)
+        await self.session.flush()
+
+    async def get_wod(self, wod_id: UUID) -> Wod | None:
+        stmt = (
+            select(Wod)
+            .where(Wod.id == wod_id)
+            .options(
+                joinedload(Wod.block)
+                .joinedload(TrainingBlock.session)
+                .joinedload(TrainingSession.workout)
+            )
+        )
+        return await self.session.scalar(stmt)
+
+    async def add_wod_results(self, results: list[WodResult]) -> None:
         self.session.add_all(results)
         await self.session.flush()
 
