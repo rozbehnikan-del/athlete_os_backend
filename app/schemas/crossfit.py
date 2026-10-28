@@ -42,10 +42,27 @@ class RoundsRepsScore(BaseModel):
     reps: int = Field(ge=0)
 
 
+class LoadAttempt(BaseModel):
+    load: float = Field(gt=0, allow_inf_nan=False)
+    successful: bool
+
+
 class LoadScore(BaseModel):
     type: Literal["load"]
     load: float = Field(gt=0, allow_inf_nan=False)
     unit: Literal["kg", "lb"]
+    attempts: list[LoadAttempt] = Field(default_factory=list, max_length=30)
+
+    @model_validator(mode="after")
+    def validate_best_successful_attempt(self):
+        if not self.attempts:
+            return self
+        successful = [attempt.load for attempt in self.attempts if attempt.successful]
+        if not successful:
+            raise ValueError("Load attempts require at least one successful lift.")
+        if abs(self.load - max(successful)) > 0.000001:
+            raise ValueError("Best load must match the highest successful attempt.")
+        return self
 
 
 class RepsScore(BaseModel):
