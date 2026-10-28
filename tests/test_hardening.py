@@ -14,9 +14,13 @@ from app.services.workout_service import WorkoutService
 def test_model_registry_is_complete_in_clean_process():
     subprocess.run([sys.executable,'-c', '''from app import models
 from app.core.database import Base
-expected = {'users','athlete_profiles','coach_profiles','coach_athletes','exercises','workouts','workout_exercises','workout_sets','workout_results','set_results'}
+expected = {'users','athlete_profiles','coach_profiles','coach_athletes','exercises','workouts','workout_exercises','workout_sets','workout_results','set_results','training_sessions','training_blocks','wods','wod_results'}
 assert expected == set(Base.metadata.tables)
 assert models.CoachAthlete.__tablename__ == 'coach_athletes'
+assert models.TrainingSession.__tablename__ == 'training_sessions'
+assert models.TrainingBlock.__tablename__ == 'training_blocks'
+assert models.Wod.__tablename__ == 'wods'
+assert models.WodResult.__tablename__ == 'wod_results'
 '''],check=True)
 
 @pytest.mark.parametrize('instant,zone,expected',[
