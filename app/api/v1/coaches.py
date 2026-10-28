@@ -5,7 +5,7 @@ from app.api.deps import get_current_coach, get_current_user, get_session
 from app.models.user import User
 from app.repositories.coach_repository import CoachRepository
 from app.services.coach_service import CoachService
-from app.schemas.coach import WorkoutCreate, RosterResponse, AthleteDetailResponse
+from app.schemas.coach import TrainingSessionCreate, WorkoutCreate, RosterResponse, AthleteDetailResponse
 from app.schemas.workout import WorkoutDetailDataResponse, ExerciseSummary
 from pydantic import BaseModel
 
@@ -21,6 +21,17 @@ async def roster(user: User = Depends(get_current_coach), service=Depends(get_co
 @router.get('/coaches/me/athletes/{athlete_id}', response_model=AthleteDetailResponse)
 async def detail(athlete_id: UUID, user: User = Depends(get_current_coach), service=Depends(get_coach_service)):
     return AthleteDetailResponse(data=await service.detail(user.id, athlete_id))
+
+@router.post('/coaches/me/athletes/{athlete_id}/sessions', response_model=WorkoutDetailDataResponse, status_code=201)
+async def create_training_session(
+    athlete_id: UUID,
+    payload: TrainingSessionCreate,
+    user: User = Depends(get_current_coach),
+    service=Depends(get_coach_service),
+):
+    return WorkoutDetailDataResponse(
+        data=await service.create_session(user.id, athlete_id, payload)
+    )
 
 @router.post('/coaches/me/athletes/{athlete_id}/workouts', response_model=WorkoutDetailDataResponse, status_code=201)
 async def create_workout(athlete_id: UUID, payload: WorkoutCreate,
