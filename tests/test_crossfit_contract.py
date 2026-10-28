@@ -121,3 +121,54 @@ def test_max_load_attempts_preserve_failed_lifts_and_best_success():
 def test_invalid_max_load_attempts(score):
     with pytest.raises(ValidationError):
         WodResultCreate.model_validate({"scaling": "rx", "score": score})
+
+def test_emom_minute_targets_contract():
+    definition = WodDefinition.model_validate(
+        {
+            "format": "emom",
+            "score_type": "intervals",
+            "duration_seconds": 180,
+            "score_config": {
+                "minute_targets": [
+                    "10 Wall Balls",
+                    "8 Box Jumps",
+                    "6 Burpees",
+                ]
+            },
+        }
+    )
+    assert len(definition.score_config["minute_targets"]) == 3
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "format": "emom",
+            "score_type": "intervals",
+            "duration_seconds": 180,
+            "score_config": {"minute_targets": ["10 Wall Balls"]},
+        },
+        {
+            "format": "emom",
+            "score_type": "reps",
+            "duration_seconds": 180,
+            "score_config": {"minute_targets": ["A", "B", "C"]},
+        },
+        {
+            "format": "emom",
+            "score_type": "intervals",
+            "duration_seconds": 170,
+            "score_config": {"minute_targets": ["A", "B", "C"]},
+        },
+        {
+            "format": "emom",
+            "score_type": "intervals",
+            "duration_seconds": 120,
+            "score_config": {"minute_targets": ["A", ""]},
+        },
+    ],
+)
+def test_invalid_emom_minute_target_contract(payload):
+    with pytest.raises(ValidationError):
+        WodDefinition.model_validate(payload)
