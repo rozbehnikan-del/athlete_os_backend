@@ -10,8 +10,8 @@ from app.core.config import get_settings
 
 def _normalize_check(value):
     value = (value or '').lower()
-    value = re.sub(r'::(?:character varying|text|numeric)(?:\\[\\])?', '', value)
-    value = re.sub(r'\\s+', '', value)
+    value = re.sub(r'::(?:character varying|text|numeric)(?:\[\])?', '', value)
+    value = re.sub(r'\s+', '', value)
     while value.startswith('(') and value.endswith(')'):
         value = value[1:-1]
     return value
