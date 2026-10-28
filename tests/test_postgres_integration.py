@@ -104,6 +104,7 @@ def test_fresh_bootstrap_tables_and_constraints(database):
         assert len([c for c in constraints if set(c['column_names']) == {'workout_id','athlete_id'}]) == 1
         assert any(c['name'] == 'uq_workout_results_workout_athlete' for c in constraints)
         assert any(i['name']=='uq_workouts_athlete_scheduled_open' and i['unique'] for i in i.get_indexes('workouts'))
+        assert {'training_sessions','training_blocks','wods','wod_results'}.issubset(set(i.get_table_names()))
     finally:
         engine.dispose()
 
@@ -168,32 +169,32 @@ def test_adoption_and_duplicate_guard():
             c.execute(text("insert into users(id,full_name,role) values (:c,'Coach','coach'),(:a,'Athlete','athlete')"),{'c':coach,'a':athlete})
             c.execute(text("insert into workouts(athlete_id,coach_id,title,scheduled_for) values (:a,:c,'One',CURRENT_DATE),(:a,:c,'Two',CURRENT_DATE)"),{'a':athlete,'c':coach})
         with pytest.raises(RuntimeError,match='multiple open workouts'):
-            migrate(name)
+            migrate(name,'0002_training_invariants')
         with engine.connect() as c:
             assert c.scalar(text('select count(*) from workouts'))==2
             assert c.scalar(text('select version_num from alembic_version'))=='0001_add_user_password_hash'
         # Operator resolves the schedule explicitly; the migration never edits rows.
         with engine.begin() as c:
             c.execute(text("update workouts set status='cancelled' where title='Two'"))
-        migrate(name)
+        migrate(name,'0002_training_invariants')
         assert len(inspect(engine).get_unique_constraints('workout_results'))==1
         # An unversioned populated schema must be refused, then audited/stamped.
         migrate(name,'base',stamp=True)
         with pytest.raises(RuntimeError,match='empty application schema'):
-            migrate(name)
+            migrate(name,'0002_training_invariants')
         from scripts.audit_schema import audit
         with engine.connect() as connection:
             assert audit(connection)==[]
             assert connection.scalar(text('select count(*) from workouts'))==2
         # Stamp adoption of an already-existing baseline, then upgrade, is safe.
         migrate(name,'0001_add_user_password_hash',stamp=True)
-        migrate(name)
+        migrate(name,'0002_training_invariants')
         # Reuse an equivalent standalone unique index instead of duplicating it.
         migrate(name,'0001_add_user_password_hash',stamp=True)
         with engine.begin() as c:
             c.execute(text('alter table workout_results drop constraint uq_workout_results_workout_athlete'))
             c.execute(text('create unique index legacy_result_identity on workout_results(workout_id,athlete_id)'))
-        migrate(name)
+        migrate(name,'0002_training_invariants')
         assert len(inspect(engine).get_unique_constraints('workout_results'))==1
         # Existing duplicate result data must stop the migration without deletion.
         migrate(name,'0001_add_user_password_hash',stamp=True)
@@ -202,7 +203,7 @@ def test_adoption_and_duplicate_guard():
             c.execute(text("insert into workout_results(workout_id,athlete_id) select id,athlete_id from workouts where title='One'"))
             c.execute(text("insert into workout_results(workout_id,athlete_id) select id,athlete_id from workouts where title='One'"))
         with pytest.raises(RuntimeError,match='duplicate workout results'):
-            migrate(name)
+            migrate(name,'0002_training_invariants')
         with engine.connect() as c:
             assert c.scalar(text('select count(*) from workout_results'))==2
         engine.dispose()
