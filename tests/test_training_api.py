@@ -482,3 +482,46 @@ def test_foreign_wod_is_rejected():
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "INVALID_WOD"
     assert repository.results == []
+
+class EmomResultRepository(CrossFitResultRepository):
+    async def get_wod(self, wod_id):
+        wod = await super().get_wod(wod_id)
+        if wod is not None and wod_id == self.wod_id:
+            wod.format = "emom"
+            wod.score_type = "intervals"
+            wod.score_config = {
+                "minute_targets": ["10 Wall Balls", "8 Box Jumps", "6 Burpees"]
+            }
+        return wod
+
+
+@pytest.mark.parametrize(
+    "values,expected_status,expected_error",
+    [
+        ([10, 8, 6], 201, None),
+        ([10, 8], 400, "INVALID_EMOM_MINUTE_RESULTS"),
+        ([10, -1, 6], 400, "INVALID_EMOM_MINUTE_RESULTS"),
+        ([10, 8.5, 6], 400, "INVALID_EMOM_MINUTE_RESULTS"),
+    ],
+)
+def test_emom_minute_result_contract(values, expected_status, expected_error):
+    repository = EmomResultRepository()
+    payload = crossfit_result_payload(
+        repository,
+        score={"type": "intervals", "values": values},
+    )
+    try:
+        with _crossfit_client(repository) as test_client:
+            response = test_client.post(
+                f"/v1/workouts/{WORKOUT_ID}/results",
+                json=payload,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == expected_status, response.text
+    if expected_error:
+        assert response.json()["error"]["code"] == expected_error
+        assert repository.wod_results == []
+    else:
+        assert repository.wod_results[0].score["values"] == values

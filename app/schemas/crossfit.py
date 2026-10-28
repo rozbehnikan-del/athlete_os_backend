@@ -147,8 +147,28 @@ class WodDefinition(BaseModel):
             )
         if self.format == "amrap" and self.duration_seconds is None:
             raise ValueError("AMRAP requires duration_seconds.")
-        if self.format == "emom" and self.duration_seconds is None:
-            raise ValueError("EMOM requires duration_seconds.")
+        if self.format == "emom":
+            if self.duration_seconds is None:
+                raise ValueError("EMOM requires duration_seconds.")
+            targets = self.score_config.get("minute_targets")
+            if targets is not None:
+                if self.score_type != "intervals":
+                    raise ValueError("EMOM minute targets require interval scores.")
+                if self.duration_seconds % 60 != 0:
+                    raise ValueError("EMOM minute targets require whole-minute duration.")
+                if (
+                    not isinstance(targets, list)
+                    or len(targets) != self.duration_seconds // 60
+                    or any(
+                        not isinstance(target, str)
+                        or not target.strip()
+                        or len(target) > 160
+                        for target in targets
+                    )
+                ):
+                    raise ValueError(
+                        "EMOM minute_targets must provide one nonempty label per minute."
+                    )
         if self.format == "rounds_for_time" and self.rounds is None:
             raise ValueError("Rounds for Time requires rounds.")
         return self
