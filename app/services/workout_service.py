@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from sqlalchemy.exc import IntegrityError
 
 from app.api.errors import ApiError
+from app.models.crossfit import WodResult
 from app.models.user import User
 from app.models.workout import Workout, WorkoutSet
 from app.models.workout_result import SetResult, WorkoutResult
@@ -14,6 +15,9 @@ from app.schemas.history import WorkoutHistoryItem, WorkoutHistoryResponse, Work
 from app.schemas.workout import (
     CoachSummary,
     ExerciseSummary,
+    TrainingBlockResponse,
+    TrainingSessionResponse,
+    WodResponse,
     WorkoutDetailResponse,
     WorkoutExerciseResponse,
     WorkoutSetResponse,
@@ -62,6 +66,31 @@ class WorkoutService:
                 raise ApiError(400, "INVALID_SET", "Set does not belong to the requested workout.")
             resolved_sets.append(workout_set)
 
+        resolved_wods = []
+        for incoming_wod in payload.wods:
+            wod = await self.repository.get_wod(incoming_wod.wod_id)
+            if (
+                not wod
+                or not wod.block
+                or not wod.block.session
+                or wod.block.session.workout_id != workout_id
+            ):
+                raise ApiError(400, "INVALID_WOD", "WOD does not belong to the requested workout.")
+            if incoming_wod.score.type != wod.score_type:
+                raise ApiError(
+                    400,
+                    "INVALID_WOD_SCORE",
+                    "Submitted score type does not match the prescribed WOD.",
+                )
+            allowed_scaling = set(wod.scaling_options or [])
+            if allowed_scaling and incoming_wod.scaling not in allowed_scaling:
+                raise ApiError(
+                    400,
+                    "INVALID_SCALING",
+                    "Submitted scaling is not allowed for this WOD.",
+                )
+            resolved_wods.append(wod)
+
         completed_at = payload.completed_at
         if completed_at.tzinfo is None:
             completed_at = completed_at.replace(tzinfo=UTC)
@@ -90,7 +119,23 @@ class WorkoutService:
                 )
                 for incoming_set, workout_set in zip(payload.sets, resolved_sets, strict=True)
             ]
-            await self.repository.add_set_results(set_results)
+            if set_results:
+                await self.repository.add_set_results(set_results)
+            wod_results = [
+                WodResult(
+                    id=uuid4(),
+                    workout_result_id=result.id,
+                    wod_id=incoming_wod.wod_id,
+                    scaling=incoming_wod.scaling,
+                    score=incoming_wod.score_dict(),
+                    dnf=incoming_wod.dnf,
+                    rpe=Decimal(str(incoming_wod.rpe)) if incoming_wod.rpe is not None else None,
+                    athlete_notes=incoming_wod.athlete_notes,
+                )
+                for incoming_wod in payload.wods
+            ]
+            if wod_results:
+                await self.repository.add_wod_results(wod_results)
             await self.repository.mark_workout_completed(workout_id)
             await self.repository.session.commit()
         except IntegrityError as exc:
@@ -106,6 +151,7 @@ class WorkoutService:
             status="completed",
             completed_at=result.completed_at,
             completed_sets=sum(1 for item in payload.sets if item.completed),
+            completed_wods=len(payload.wods),
             notes=result.notes,
         )
 
@@ -162,6 +208,41 @@ class WorkoutService:
             scheduled_for=workout.scheduled_for,
             status=workout.status,
             coach=self._coach_summary(workout.coach),
+            session=(
+                TrainingSessionResponse(
+                    id=getattr(workout, "training_session").id,
+                    blocks=[
+                        TrainingBlockResponse(
+                            id=block.id,
+                            order=block.block_order,
+                            type=block.block_type,
+                            title=block.title,
+                            coach_note=block.coach_note,
+                            prescription=block.prescription or {},
+                            wod=(
+                                WodResponse(
+                                    id=block.wod.id,
+                                    format=block.wod.format,
+                                    score_type=block.wod.score_type,
+                                    duration_seconds=block.wod.duration_seconds,
+                                    time_cap_seconds=block.wod.time_cap_seconds,
+                                    rounds=block.wod.rounds,
+                                    scaling_options=list(block.wod.scaling_options or []),
+                                    score_config=block.wod.score_config or {},
+                                )
+                                if block.wod
+                                else None
+                            ),
+                        )
+                        for block in sorted(
+                            getattr(workout, "training_session").blocks,
+                            key=lambda item: item.block_order,
+                        )
+                    ],
+                )
+                if getattr(workout, "training_session", None)
+                else None
+            ),
             exercises=[
                 WorkoutExerciseResponse(
                     prescription_id=workout_exercise.id,

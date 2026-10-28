@@ -26,6 +26,11 @@ class WorkoutResult(Base):
 
     workout = relationship("Workout")
     set_results = relationship("SetResult", back_populates="workout_result")
+    wod_results = relationship(
+        "WodResult",
+        back_populates="workout_result",
+        cascade="all, delete-orphan",
+    )
 
 
 class SetResult(Base):

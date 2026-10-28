@@ -32,6 +32,12 @@ class Workout(Base):
         back_populates="workout",
         order_by="WorkoutExercise.exercise_order",
     )
+    training_session = relationship(
+        "TrainingSession",
+        back_populates="workout",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
 
 class WorkoutExercise(Base):
